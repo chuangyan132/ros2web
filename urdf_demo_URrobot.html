@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.113.0/build/three.min.js"></script>
+<!-- <script src="https://static.robotwebtools.org/threejs/current/ColladaLoader.js"></script> --><!-- CDN is gone -->
+<!-- <script src="https://static.robotwebtools.org/threejs/current/STLLoader.js"></script> --><!-- CDN is gone -->
+<script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4/lib/eventemitter2.js"></script>
+<script src="roslibjs/dist/RosLib.umd.cjs"></script> <!-- use umd build from roslibjs-->
+<script src="ros3djs/build/ros3d.js"></script> <!-- use grunt build from ros3djs --> 
+<script src="js/ColladaLoader.js"></script> <!-- override the default ColladaLoader -->
+
+<script>
+  /**
+   * Setup all visualization elements when the page is loaded.
+   */
+  function init() {
+    // Connect to ROS.
+    var ros = new ROSLIB.Ros({
+      url : 'ws://localhost:9090'
+    });
+
+    // When the Rosbridge server connects, fill the span with id "status" with "successful"
+    ros.on("connection", () => {
+            document.getElementById("status").innerHTML = "successful";
+            console.log("Connection established");
+    });
+
+    // When the Rosbridge server experiences an error, fill the "status" span with the returned error
+    ros.on("error", (error) => {
+            document.getElementById("status").innerHTML = `errored out (${error})`;
+            console.log("Connection error");
+        });
+
+    // When the Rosbridge server shuts down, fill the "status" span with "closed"
+    ros.on("close", () => {
+        document.getElementById("status").innerHTML = "closed";
+        console.log("Connection closed");
+    });
+
+    // Create the main viewer.
+    var viewer = new ROS3D.Viewer({
+      divID : 'urdf',
+      width : 800,
+      height : 600,
+      antialias : true
+    });
+
+    // Add a grid.
+    viewer.addObject(new ROS3D.Grid());
+
+    // Setup a client to listen to TFs.
+    var tfClient = new ROSLIB.TF2Client({
+      ros : ros,
+      fixedFrame : 'base_link', 
+      angularThres : 0.01,
+      transThres : 0.01,
+      rate : 10.0
+    });
+
+
+    // Setup the URDF client.
+    var urdfClient = new ROS3D.UrdfClient({
+      ros : ros,
+      tfClient : tfClient,
+      param : '/robot_state_publisher:robot_description', 
+      path : 'https://raw.githubusercontent.com/chuangyan132/Universal_Robots_ROS2_Description/change_folder',
+      rootObject : viewer.scene
+    });
+
+  }
+</script>
+</head>
+
+<body onload="init()">
+  <h1>Simple URDF Example</h1>
+  <p>Connection: <span id="status" style="font-weight: bold;">N/A</span></p>
+  <div id="urdf"></div>
+</body>
+</html>
